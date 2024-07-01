@@ -1,6 +1,6 @@
 "use client";
-import Image from 'next/image';
 import { useState, useEffect } from 'react';
+import Header from './Header';
 
 export default function Home() {
   const [blogs, setBlogs] = useState([]);
@@ -9,7 +9,6 @@ export default function Home() {
   const [showCommentBox, setShowCommentBox] = useState({});
 
   useEffect(() => {
-    // Fetch the blogs from your API
     fetch('/api/blogs')
       .then(response => response.json())
       .then(data => {
@@ -25,13 +24,24 @@ export default function Home() {
       });
   }, []);
 
+  useEffect(() => {
+    const initialShowCommentBoxState = {};
+    blogs.forEach(blog => {
+      initialShowCommentBoxState[blog.id] = false;
+    });
+    setShowCommentBox(initialShowCommentBoxState);
+
+    blogs.forEach(blog => {
+      fetchComments(blog.id);
+    });
+  }, [blogs]);
+
   const getMockBlogs = () => [
     {
       id: 1,
       title: "Mock Blog 1",
       content: "This is a mock blog content. It serves as a placeholder when no blogs are available.",
       mediaFiles: [],
-      comments: [], // Add a comments array to each mock blog
     },
     {
       id: 2,
@@ -44,7 +54,6 @@ export default function Home() {
           name: "Placeholder Image",
         },
       ],
-      comments: [], // Add a comments array to each mock blog
     },
   ];
 
@@ -62,11 +71,6 @@ export default function Home() {
       setComments(prevComments => ({
         ...prevComments,
         [blogId]: data
-      }));
-      // Ensure comment box is shown when comments are loaded
-      setShowCommentBox(prevShow => ({
-        ...prevShow,
-        [blogId]: true
       }));
     } catch (error) {
       console.error('Error fetching comments:', error);
@@ -95,32 +99,26 @@ export default function Home() {
         ...commentContent,
         [blogId]: ''
       });
-      // Show the comment box after submitting a comment
-      setShowCommentBox(prevShow => ({
-        ...prevShow,
-        [blogId]: true
-      }));
     } catch (error) {
       console.error('Error posting comment:', error);
     }
   };
 
   const toggleCommentBox = (blogId) => {
-    setShowCommentBox(prevShow => ({
-      ...prevShow,
-      [blogId]: !prevShow[blogId]
+    setShowCommentBox(prevState => ({
+      ...prevState,
+      [blogId]: !prevState[blogId]
     }));
-    // Fetch comments if they haven't been loaded yet
-    if (!comments[blogId]) {
-      fetchComments(blogId);
-    }
+  };
+
+  const handleBlogPublished = (newBlog) => {
+    setBlogs(prevBlogs => [newBlog, ...prevBlogs]);
   };
 
   return (
     <div className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-8">
-
-      </div>
+      <Header onBlogPublished={handleBlogPublished} />
+      <div className="flex justify-between items-center mb-8"></div>
       {blogs.length > 0 ? (
         blogs.map(blog => (
           <div key={blog.id} className="mb-8">
@@ -137,11 +135,12 @@ export default function Home() {
               </div>
             ))}
             <div className="mt-4">
+              <h3 className="text-lg font-semibold">Comments:</h3>
               <button
                 onClick={() => toggleCommentBox(blog.id)}
                 className="text-blue-500"
               >
-                {showCommentBox[blog.id] ? 'Hide Comments' : <Image src= "/comment.png" width={25} height={25}></Image>}
+                {showCommentBox[blog.id] ? 'Hide Comments' : 'Show Comments'}
               </button>
               {showCommentBox[blog.id] && comments[blog.id] && comments[blog.id].map((comment, index) => (
                 <p key={index} className="text-gray-600 mt-2">{comment.content}</p>
@@ -157,7 +156,7 @@ export default function Home() {
               {showCommentBox[blog.id] && (
                 <button
                   onClick={() => handleCommentSubmit(blog.id)}
-                  className="bg-blue-400 hover:bg-blue-600 text-white px-3 py-2 rounded-md mt-2"
+                  className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md mt-2"
                 >
                   Comment
                 </button>
